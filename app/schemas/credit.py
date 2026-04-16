@@ -1,69 +1,73 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, PlainSerializer
 from datetime import date
+from typing import Annotated
 from decimal import Decimal, ROUND_HALF_UP
 
 PRECISION = Decimal('0.01')
 
+Money = Annotated[
+    Decimal,
+    PlainSerializer(lambda v: float(v.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)), return_type=float)
+]
 
 class CreditBaseSchema(BaseModel):
-    @field_validator(
-        'body', 'percent', 'total_payments',
-        'body_payments', 'interest_payments',
-        'issuance_sum', 'payment_sum', 'plan_issuance', 'plan_collection',
-        'fact_sum', 'plan_sum',
-        mode='before', check_fields=False
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_encoders = {
+        Decimal: lambda v: str(v.quantize(PRECISION))
+        }
     )
+
     @classmethod
     def round_money(cls, v):
         if v is None:
-            return Decimal('0.00')
+            return v
         if isinstance(v, (float, str, Decimal, int)):
             return Decimal(str(v)).quantize(PRECISION, rounding=ROUND_HALF_UP)
         return v
 
-    class Config:
-        from_attributes = True
+
 
 
 class UserCreditBase(CreditBaseSchema):
     credit_id: int
     issuance_date: date
     is_closed: bool
-    body: Decimal
-    percent: Decimal
+    body: Money
+    percent: Money
 
 
 class ClosedCredit(UserCreditBase):
     is_closed: bool = True
     actual_return_date: date
-    total_payments: Decimal
+    total_payments: Money
 
 
 class OpenCredit(UserCreditBase):
     is_closed: bool = False
     return_date: date
     overdue_days: int
-    body_payments: Decimal
-    interest_payments: Decimal
+    body_payments: Money
+    interest_payments: Money
 
 
 
 class PlanPerformance(CreditBaseSchema):
     month: str
     category: str
-    plan_sum: Decimal
-    fact_sum: Decimal
+    plan_sum: Money
+    fact_sum: Money
     performance_percentage: str
 
 
 class YearlyReportItem(CreditBaseSchema):
     month: str
     issuance_count: int
-    issuance_sum: Decimal
+    issuance_sum: Money
     payment_count: int
-    payment_sum: Decimal
-    plan_issuance: Decimal
-    plan_collection: Decimal
+    payment_sum: Money
+    plan_issuance: Money
+    plan_collection: Money
     issuance_performance: str
     collection_performance: str
     issuance_year_share: str
