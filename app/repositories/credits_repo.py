@@ -1,5 +1,4 @@
 from sqlalchemy import func, and_, select, case, extract
-from sqlalchemy.orm import Session
 from .base import BaseRepository
 from app.models.credits import Credits
 from app.models.payments import Payments
@@ -56,30 +55,31 @@ class CreditRepository(BaseRepository):
         ).join(Dictionary, Plans.category_id == Dictionary.id) \
             .filter(Plans.period == start_of_month).all()
 
-
-    def get_yearly_performance(self, year: int):
-        issuance_stats = self.db.query(
+    def get_yearly_report_data(self, year: int):
+        iss_sub = self.db.query(
             extract('month', Credits.issuance_date).label('month'),
-            func.count(Credits.id).label('count'),
-            func.sum(Credits.body).label('sum')
-        ).filter(extract('year', Credits.issuance_date) == year)\
-        .group_by(extract('month', Credits.issuance_date)).subquery()
+            func.count(Credits.id).label('iss_count'),
+            func.sum(Credits.body).label('iss_sum')
+        ).filter(extract('year', Credits.issuance_date) == year) \
+            .group_by(extract('month', Credits.issuance_date)).subquery()
 
-        payment_stats = self.db.query(
+        pay_sub = self.db.query(
             extract('month', Payments.payment_date).label('month'),
-            func.count(Payments.id).label('count'),
-            func.sum(Payments.sum).label('sum')
+            func.count(Payments.id).label('pay_count'),
+            func.sum(Payments.sum).label('pay_sum')
         ).filter(extract('year', Payments.payment_date) == year) \
             .group_by(extract('month', Payments.payment_date)).subquery()
 
         return self.db.query(
             Plans.period,
-            Plans.category_id,
-            Plans.sum.label('plan_sum'),
-            func.coalesce(issuance_stats.c.count, 0).label('issuance_count'),
-            func.coalesce(issuance_stats.c.sum, 0).label('issuance_sum'),
-            func.coalesce(payment_stats.c.count, 0).label('payment_count'),
-            func.coalesce(payment_stats.c.sum, 0).label('payment_sum')
-        ).outerjoin(issuance_stats, extract('month', Plans.period) == issuance_stats.c.month) \
-            .outerjoin(payment_stats, extract('month', Plans.period) == payment_stats.c.month) \
-            .filter(extract('year', Plans.period) == year).all()
+            func.max(iss_sub.c.iss_count).label('issuance_count'),
+            func.max(iss_sub.c.iss_sum).label('issuance_sum'),
+            func.sum(case((Plans.category_id == 3, Plans.sum), else_=0)).label('plan_issuance'),
+            func.max(pay_sub.c.pay_count).label('payment_count'),
+            func.max(pay_sub.c.pay_sum).label('payment_sum'),
+            func.sum(case((Plans.category_id == 4, Plans.sum), else_=0)).label('plan_collection')
+        ).outerjoin(iss_sub, extract('month', Plans.period) == iss_sub.c.month) \
+            .outerjoin(pay_sub, extract('month', Plans.period) == pay_sub.c.month) \
+            .filter(extract('year', Plans.period) == year) \
+            .group_by(Plans.period) \
+            .order_by(Plans.period).all()
