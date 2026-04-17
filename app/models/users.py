@@ -7,7 +7,7 @@ class Users(Base):
     __tablename__ = 'users'
 
     id = Column(Integer, primary_key=True, index=True)
-    login = Column(String, nullable=False, unique=True)
+    login = Column(String(200), nullable=False, unique=True)
     registration_date = Column(Date, nullable=False)
 
     credits = relationship("Credits", back_populates="user")

@@ -12,7 +12,11 @@ class Settings(BaseSettings):
 
     APP_NAME: str = "user-credits"
     APP_ENV: str = "development"
+
+    MYSQL_DATABASE: str
+    MYSQL_ROOT_PASSWORD: str
     DATABASE_URL: str
+
     SNAPSHOT_DATE: date = date(2021, 12, 30)
 
 @lru_cache

@@ -1,4 +1,3 @@
-from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
 from .base import BaseRepository
