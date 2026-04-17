@@ -1,10 +1,13 @@
-from typing import List, Union, Dict
-from decimal import Decimal, ROUND_HALF_UP
+from typing import List, Union
+from decimal import Decimal
 from datetime import datetime
 from fastapi import HTTPException
 
 from app.repositories.credits_repo import CreditRepository
 from app.schemas.credit import ClosedCredit, OpenCredit, UserCreditBase, PlanPerformance, YearlyReportItem
+from app.core.config import get_settings
+
+settings = get_settings()
 
 class CreditService:
     def __init__(self, credit_repo: CreditRepository):
@@ -42,9 +45,9 @@ class CreditService:
 
             else:
                 overdue_days = 0
-                if credit.actual_return_date and credit.return_date:
-                    delta = credit.actual_return_date - credit.return_date
-                    overdue_days = max(delta.days, 0)
+                if credit.return_date and settings.SNAPSHOT_DATE > credit.return_date:
+                    delta = settings.SNAPSHOT_DATE - credit.return_date
+                    overdue_days = delta.days
 
                 body_paid = sum((Decimal(str(p.sum)) for p in payments if p.type_id == 1), Decimal('0'))
                 interest_paid = sum((Decimal(str(p.sum)) for p in payments if p.type_id == 2), Decimal('0'))

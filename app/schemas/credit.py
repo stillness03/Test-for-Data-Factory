@@ -28,7 +28,6 @@ class CreditBaseSchema(BaseModel):
 
 
 
-
 class UserCreditBase(CreditBaseSchema):
     credit_id: int
     issuance_date: date
