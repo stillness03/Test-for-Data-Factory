@@ -24,5 +24,5 @@ class CreditPlanRepository(BaseRepository):
             sum=amount,
             category_id=category_id
         )
-        self.db.query(new_plan)
+        self.db.add(new_plan)
         return new_plan
